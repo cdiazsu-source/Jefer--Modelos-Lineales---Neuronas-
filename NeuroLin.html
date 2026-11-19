@@ -82,6 +82,7 @@ output{font-variant-numeric:tabular-nums;color:var(--link);font-weight:600;font-
 .btns{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0;background:none;border:0;box-shadow:none}
 .fig{padding:8px}
+.stack{display:grid;gap:14px}
 .fighead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 4px 6px;font-size:13px;color:var(--mut);font-weight:500}
 .fighead .btn{padding:4px 12px;font-size:13px;color:var(--link);border-color:var(--link)}
 .fighead .btn:hover{background:var(--panel2)}
@@ -179,6 +180,7 @@ const T=(s,d=false)=>`<span class="tex" data-tex="${esc(s)}" data-d="${d?1:0}"><
 function renderTex(root){$$('.tex',root).forEach(el=>{const s=el.dataset.tex;if(window.katex){try{katex.render(s,el,{displayMode:el.dataset.d==='1',throwOnError:false})}catch(e){el.textContent=s}}else el.textContent=s})}
 const nachito=txt=>`<div class="nach"><span class="av"><img src="${NACH}" alt="Nachito"></span><div class="bub"><b class="who">Nachito:</b> ${txt}</div></div>`;
 const TIPS={
+ intro:'¡Bienvenido! La conexión entre neuronas ocurre en la sinapsis. Los círculos verdes marcan las partes que la forman y donde se guarda el aprendizaje: un peso w más grande es una sinapsis más fuerte.',
  neurona:'¡Hola! Las líneas verdes son sinapsis excitadoras y las rojas, inhibidoras. Mira cómo el soma se “enciende” cuando z supera el umbral.',
  predice:'Una neurona sin activación es una regresión lineal. Ajusta w y b a mano… ¡y luego deja que MCO te muestre el mínimo!',
  decide:'Mueve la frontera y fíjate en los círculos rojos: son los errores. Subir el umbral t te hace más exigente.',
@@ -282,11 +284,128 @@ function neuronSVG(x,w,b,z,a){
   </svg></div>`;
 }
 
+/* ============ esquemas del módulo 0: anatomía, sinapsis y redes ============ */
+const PARTES={
+ dendritas:{n:'Dendritas y espinas dendríticas',cs:'Sí (lado postsináptico)',art:'Entradas xᵢ y pesos wᵢ',
+  fn:'Reciben las señales de otras neuronas. Las espinas dendríticas albergan la mayoría de las sinapsis excitatorias y sus receptores.',
+  conex:'Sí. Forman el lado <b>postsináptico</b> de la conexión.',
+  apr:'Aquí se fortalecen o debilitan las sinapsis (plasticidad sináptica): cambian el número y la sensibilidad de los receptores.'},
+ soma:{n:'Soma (cuerpo celular)',cs:'No (integra)',art:'Suma z = Σ wᵢxᵢ + b',
+  fn:'Integra los potenciales postsinápticos excitatorios e inhibitorios que llegan (sumación espacial y temporal). Contiene el núcleo.',
+  conex:'No directamente: integra lo que reciben las dendritas, no forma la sinapsis.',
+  apr:'Resume el efecto de todas las sinapsis. El núcleo permite sintetizar las proteínas que consolidan los cambios duraderos (memoria a largo plazo).'},
+ cono:{n:'Cono axónico (segmento inicial del axón)',cs:'No (decide)',art:'Umbral: sesgo b y activación φ',
+  fn:'Región donde se genera el potencial de acción cuando la suma de entradas alcanza el umbral.',
+  conex:'No directamente: decide si habrá una señal que transmitir.',
+  apr:'Su umbral fija la excitabilidad de la neurona y puede modificarse con la experiencia, como el sesgo b, que también se aprende.'},
+ axon:{n:'Axón',cs:'No (conduce)',art:'Salida a = φ(z)',
+  fn:'Conduce el potencial de acción, de todo o nada, sin perder amplitud hasta los terminales.',
+  conex:'No: lleva la señal hasta el punto de conexión.',
+  apr:'El aprendizaje no se guarda aquí sino en las sinapsis; el axón solo determina cuándo llegan los disparos.'},
+ mielina:{n:'Vaina de mielina y nodos de Ranvier',cs:'No (acelera)',art:'Sin equivalente directo',
+  fn:'La mielina, formada por células gliales, aísla el axón; el impulso “salta” de un nodo de Ranvier al siguiente y viaja más rápido.',
+  conex:'No: acelera la llegada de la señal a los terminales.',
+  apr:'Hay evidencia de que la actividad puede modificar la mielinización y, con ello, la velocidad de conducción.'},
+ terminales:{n:'Terminales axónicos (botones sinápticos)',cs:'Sí (lado presináptico)',art:'Salida a de la neurona emisora',
+  fn:'Cuando llega el potencial de acción entra calcio y las vesículas liberan neurotransmisor a la hendidura sináptica.',
+  conex:'Sí. Forman el lado <b>presináptico</b> de la conexión.',
+  apr:'La cantidad de neurotransmisor liberada cambia con la experiencia y modifica la fuerza de la sinapsis.'}
+};
+const PARTE_ORDEN=['dendritas','soma','cono','axon','mielina','terminales'];
+function anatomySVG(P){
+  const sel=k=>P.parte===k,dim=k=>(P.parte==='todas'||sel(k))?1:0.25;
+  const st=k=>sel(k)?'var(--acc2)':'var(--txt)',sw=(k,b)=>sel(k)?b+1.5:b;
+  const lab=(k,x,y,t,x2,y2)=>`<line x1="${x}" y1="${y<120?y+6:y-14}" x2="${x2}" y2="${y2}" style="stroke:var(--mut)" stroke-width="1" opacity="${dim(k)}"/><text x="${x}" y="${y}" text-anchor="middle" style="font-size:12.5px;font-weight:${sel(k)?700:500};fill:${sel(k)?'var(--acc2)':'var(--txt)'}" opacity="${dim(k)}">${t}</text>`;
+  const spines=[[120,66],[132,98],[100,112],[110,140],[125,182],[135,160]];
+  const dpaths=['M218 108 L168 82 L120 66','M168 82 L132 98','M222 125 L150 125 L100 112','M150 125 L110 140','M220 142 L170 170 L125 182','M170 170 L135 160'];
+  const ring=(x,y,r)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="none" style="stroke:var(--pos)" stroke-width="2" stroke-dasharray="3 3"/>`;
+  const dend=`<g opacity="${dim('dendritas')}">${dpaths.map(d=>`<path d="${d}" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke:${st('dendritas')}" stroke-width="${sw('dendritas',2.5)}"/>`).join('')}${spines.map(s=>`<circle cx="${s[0]}" cy="${s[1]}" r="3.5" style="fill:${st('dendritas')}"/>${P.conex?ring(s[0],s[1],9):''}`).join('')}</g>`;
+  const soma=`<g opacity="${dim('soma')}"><circle cx="250" cy="125" r="34" style="fill:var(--panel2);stroke:${st('soma')}" stroke-width="${sw('soma',2.5)}"/><circle cx="250" cy="125" r="12" style="fill:var(--mut)" fill-opacity=".5"/></g>`;
+  const cono=`<polygon points="280,108 312,121 312,129 280,142" style="fill:var(--panel2);stroke:${st('cono')}" stroke-width="${sw('cono',2.5)}" opacity="${dim('cono')}"/>`;
+  const axon=`<line x1="312" y1="125" x2="560" y2="125" style="stroke:${st('axon')}" stroke-width="${sw('axon',3)}" opacity="${dim('axon')}"/>`;
+  const myel=`<g opacity="${dim('mielina')}">${[326,398,470].map(x=>`<rect x="${x}" y="113" width="60" height="24" rx="12" style="fill:var(--acc);stroke:${st('mielina')}" fill-opacity=".28" stroke-width="${sw('mielina',2)}"/>`).join('')}${sel('mielina')?[392,464].map(x=>`<circle cx="${x}" cy="125" r="5" style="fill:var(--acc2)"/>`).join(''):''}</g>`;
+  const bulbs=[[622,95],[628,125],[622,155]];
+  const term=`<g opacity="${dim('terminales')}">${bulbs.map(b=>`<line x1="560" y1="125" x2="${b[0]-10}" y2="${b[1]}" style="stroke:${st('terminales')}" stroke-width="${sw('terminales',2)}"/><circle cx="${b[0]}" cy="${b[1]}" r="10" style="fill:var(--acc2);stroke:${st('terminales')}" fill-opacity=".6" stroke-width="${sw('terminales',2)}"/>${P.conex?ring(b[0],b[1],16):''}`).join('')}</g>`;
+  const next=`<path d="M660 68 Q684 125 660 182" fill="none" style="stroke:var(--mut)" stroke-width="2.5" stroke-dasharray="5 4"/><text x="710" y="122" text-anchor="middle" class="svg-s">neurona</text><text x="710" y="138" text-anchor="middle" class="svg-s">siguiente</text>${P.conex?`<text x="650" y="204" text-anchor="middle" style="font-size:11.5px;fill:var(--pos);font-weight:600">sinapsis</text>`:''}`;
+  const leg=P.conex?`<text x="24" y="18" style="font-size:11.5px;fill:var(--pos)">Círculos verdes punteados: partes que forman la conexión (espinas dendríticas y terminales)</text>`:'';
+  return `<div class="card svgbox"><div class="fighead"><span>Anatomía de una neurona</span><button class="btn sm" data-info="a" title="Interpretación académica del esquema" aria-label="Interpretación del esquema de la neurona">ⓘ Interpretación</button></div><svg viewBox="0 0 760 250" role="img" aria-label="Esquema de la anatomía de una neurona">${leg}${dend}${soma}${cono}${axon}${myel}${term}${next}${lab('soma',250,44,'Soma',250,88)}${lab('mielina',400,44,'Vaina de mielina',400,112)}${lab('terminales',610,44,'Terminales axónicos',618,84)}${lab('dendritas',135,232,'Dendritas',130,192)}${lab('cono',285,232,'Cono axónico',296,144)}${lab('mielina',400,232,'Nodos de Ranvier',392,130)}${lab('axon',548,232,'Axón',548,130)}</svg></div>`;
+}
+function synapseSVG(P,w,sg,n){
+  const nv=Math.round(2+8*w),nr=Math.round(2+8*w),nt=Math.round(12*w),tc=sg>0?'var(--pos)':'var(--neg)';
+  const ves=Array.from({length:10},(_,i)=>{const on=i<nv;return `<circle cx="${90+30*i}" cy="${i%2?80:104}" r="9" style="fill:${on?'var(--acc2)':'none'};stroke:var(--acc2)" fill-opacity=".75" stroke-width="1.5" stroke-dasharray="${on?'0':'3 3'}" opacity="${on?1:.45}"/>`}).join('');
+  const nts=Array.from({length:nt},(_,i)=>`<circle cx="${70+i*29+((i*7)%5)*3}" cy="${142+((i*5)%4)*7}" r="2.8" style="fill:${tc}"/>`).join('');
+  const rec=Array.from({length:10},(_,i)=>{const on=i<nr;return `<rect x="${84+30*i}" y="171" width="12" height="15" rx="3" style="fill:${on?tc:'none'};stroke:${tc}" stroke-width="1.5" stroke-dasharray="${on?'0':'3 3'}" opacity="${on?1:.45}"/>`}).join('');
+  const ld=(y,x2,y2,t)=>`<line x1="426" y1="${y-4}" x2="${x2}" y2="${y2}" style="stroke:var(--mut)" stroke-width="1"/><text x="432" y="${y}" style="font-size:12.5px;fill:var(--txt)">${t}</text>`;
+  const cx=380,len=300*w,x0=sg>0?cx:cx-len;
+  return `<div class="card svgbox"><div class="fighead"><span>La conexión: la sinapsis química</span><button class="btn sm" data-info="b" title="Interpretación académica del esquema" aria-label="Interpretación del esquema de la sinapsis">ⓘ Interpretación</button></div><svg viewBox="0 0 760 352" role="img" aria-label="Esquema de una sinapsis química">
+  <text x="225" y="18" text-anchor="middle" class="svg-s">↓ llega el potencial de acción</text>
+  <path d="M40 74 Q40 30 84 30 H366 Q410 30 410 74 V130 H40Z" style="fill:var(--panel2);stroke:var(--txt)" stroke-width="2"/>
+  <path d="M40 170 H410 V226 Q410 270 366 270 H84 Q40 270 40 226Z" style="fill:var(--panel2);stroke:var(--txt)" stroke-width="2"/>
+  ${ves}${nts}${rec}
+  ${ld(54,412,56,'Terminal presináptico (axón)')}${ld(96,372,100,'Vesículas con neurotransmisor')}${ld(152,412,150,'Hendidura sináptica (≈ 20–40 nm)')}${ld(200,374,180,'Receptores postsinápticos')}${ld(250,404,244,'Dendrita o espina postsináptica')}
+  <text x="40" y="296" style="font-size:12.5px;font-weight:600;fill:var(--txt)">Respuesta postsináptica relativa (${sg>0?'PPSE':'PPSI'})</text>
+  <text x="720" y="296" text-anchor="end" style="font-size:12.5px;fill:${tc};font-weight:600">w = ${f(w,2)} → ${sg>0?'+':'−'}${f(w,2)}</text>
+  <line x1="80" y1="314" x2="680" y2="314" style="stroke:var(--line)" stroke-width="1"/>
+  <rect x="${x0}" y="306" width="${len}" height="16" rx="3" style="fill:${tc}"/>
+  <line x1="${cx}" y1="300" x2="${cx}" y2="330" style="stroke:var(--txt)" stroke-width="1.5"/>
+  <text x="80" y="345" text-anchor="middle" class="svg-s">−1</text><text x="${cx}" y="345" text-anchor="middle" class="svg-s">0</text><text x="680" y="345" text-anchor="middle" class="svg-s">+1</text>
+  </svg></div>`;
+}
+function networkSVG(P,w,sg,n){
+  const yIn=[90,165,240],yHid=[70,130,190,250],yOut=[115,215],rc=sg>0?'var(--pos)':'var(--neg)';
+  const ri=P.ri-1,rh=P.rh-1,ro=P.ro-1;
+  const panel=(ox,bio)=>{
+    const X=[ox+50,ox+170,ox+290];let base='',route='';
+    const edge=(x1,y1,x2,y2,on)=>{const l=on?`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:${rc}" stroke-width="${(1.5+6*w).toFixed(1)}" opacity=".95"/>`:`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:var(--mut)" stroke-width="1.2" opacity=".45"/>`;if(on)route+=l;else base+=l};
+    for(let i=0;i<3;i++)for(let j=0;j<4;j++)edge(X[0],yIn[i],X[1],yHid[j],i===ri&&j===rh);
+    for(let j=0;j<4;j++)for(let k=0;k<2;k++)edge(X[1],yHid[j],X[2],yOut[k],j===rh&&k===ro);
+    const sc=bio?'var(--acc2)':'var(--link)';
+    const node=(x,y,on,t)=>`<circle cx="${x}" cy="${y}" r="15" style="fill:var(--panel2)"/><circle cx="${x}" cy="${y}" r="15" style="fill:${on?rc:'var(--panel2)'};stroke:${on?rc:sc}" fill-opacity="${on?0.3:1}" stroke-width="${on?3:2}"/><text x="${x}" y="${y+4}" text-anchor="middle" style="font-size:11px;fill:var(--txt);font-weight:600">${t}</text>`;
+    const sub=['₁','₂','₃','₄'];
+    const nodes=yIn.map((y,i)=>node(X[0],y,i===ri,bio?'S'+(i+1):'x'+sub[i])).join('')+yHid.map((y,j)=>node(X[1],y,j===rh,bio?'I'+(j+1):'h'+sub[j])).join('')+yOut.map((y,k)=>node(X[2],y,k===ro,bio?'M'+(k+1):'ŷ'+sub[k])).join('');
+    const mx=ox+170,my=46;
+    const wl=bio?'Ruta: '+(n===0?'sinapsis sin reforzar':(sg>0?'sinapsis potenciada':'inhibición reforzada')):`Ruta: peso w = ${f(sg*w,2)}`;
+    const cl=bio?['neuronas sensoriales','interneuronas','neuronas motoras']:['entradas','capa oculta','salida'];
+    return `${base}${route}${nodes}<text x="${mx}" y="${my}" text-anchor="middle" style="font-size:11px;font-weight:600;fill:${rc};paint-order:stroke;stroke:var(--panel);stroke-width:3px">${wl}</text><text x="${ox+170}" y="26" text-anchor="middle" style="font-size:13px;font-weight:600;fill:var(--txt)">${bio?'Red biológica (circuito)':'Red artificial'}</text>${cl.map((t,i)=>`<text x="${X[i]}" y="292" text-anchor="middle" class="svg-s">${t}</text>`).join('')}`;
+  };
+  return `<div class="card svgbox"><div class="fighead"><span>De la neurona a la red</span><button class="btn sm" data-info="c" title="Interpretación académica del esquema" aria-label="Interpretación del esquema de redes">ⓘ Interpretación</button></div><svg viewBox="0 0 760 326" role="img" aria-label="Red neuronal biológica y red neuronal artificial con la ruta usada resaltada">${panel(20,true)}${panel(400,false)}<line x1="380" y1="20" x2="380" y2="280" style="stroke:var(--line)" stroke-dasharray="4 4"/><text x="380" y="316" text-anchor="middle" class="svg-s">Grosor de la línea = fuerza de la conexión (sinapsis o peso w). Con n repeticiones solo cambia la ruta usada.</text></svg></div>`;
+}
+
 /* ============ módulos ============ */
 const rangeC=(id,label,min,max,step,value)=>({type:'range',id,label,min,max,step,value});
 const seedC=(id='seed',value=1)=>({type:'select',id,label:'Muestra aleatoria',num:true,value,options:[1,2,3,4,5].map(i=>[i,'Muestra '+i])});
 
 const MODS=[
+/* ---------- 0. INTRODUCCIÓN ---------- */
+{id:'intro',num:0,titulo:'Introducción: anatomía de la neurona y redes neuronales',cap:'Preámbulo · Del cerebro al modelo',
+ resumen:'Un recorrido ligero por la anatomía de una neurona para entender qué partes forman la conexión entre neuronas y por qué ahí es donde ocurre el aprendizaje.',
+ plan:`<p>El sistema nervioso aprende cambiando <b>la fuerza de las conexiones</b> (sinapsis) entre neuronas, no creando neuronas nuevas para cada recuerdo. De toda la anatomía de una neurona, solo dos partes forman la conexión: los <b>terminales axónicos</b> de la neurona emisora y las <b>dendritas</b> (espinas) de la receptora. El resto integra, decide y transporta la señal.</p><p><b>Actividad:</b> (1) selecciona cada parte de la neurona y lee su función; (2) aumenta las <i>repeticiones de coactivación</i> y observa cómo crece la fuerza de la sinapsis; (3) cambia la ruta de la red y comprueba que solo se fortalecen las conexiones usadas. Esa fuerza es el peso ${T('w')} de la neurona artificial.</p>`,
+ teoria:`<p><b>Anatomía mínima de una neurona.</b></p>
+ <table class="t"><tr><th>Parte</th><th>Función</th><th>Equivalente artificial</th></tr>${PARTE_ORDEN.map(k=>`<tr><td>${PARTES[k].n}</td><td>${PARTES[k].fn}</td><td>${PARTES[k].art}</td></tr>`).join('')}</table>
+ <p><b>La conexión: la sinapsis química.</b> Cuando el potencial de acción llega al terminal presináptico, las vesículas liberan neurotransmisor en la hendidura sináptica (≈ 20–40 nm). El neurotransmisor se une a receptores de la membrana postsináptica y genera un potencial postsináptico <i>excitatorio</i> (PPSE, por ejemplo con glutamato) o <i>inhibitorio</i> (PPSI, por ejemplo con GABA). El signo de la respuesta corresponde al signo del peso ${T('w_i')}.</p>
+ <p><b>Aprender es cambiar la fuerza sináptica (plasticidad).</b> Hebb (1949) propuso que si la neurona emisora contribuye repetidamente a disparar a la receptora, la conexión se fortalece. La potenciación a largo plazo (PLP), descrita por Bliss y Lømo (1973), es su correlato celular; el receptor NMDA actúa como detector de coincidencias entre la señal presináptica y la actividad postsináptica. La depresión a largo plazo (DLP) debilita las sinapsis poco útiles.</p>
+ <p>Modelo didáctico usado aquí (regla hebbiana con saturación):</p>${T(String.raw`\Delta w=\eta\,x\,y,\qquad w(n)=w_{\max}-(w_{\max}-w_0)(1-\eta)^n`,true)}
+ <p>con ${T('x')} la actividad presináptica, ${T('y')} la postsináptica, ${T('n')} las coactivaciones y ${T('\\eta')} la tasa de plasticidad. En el módulo 4 el ajuste de pesos usa una regla distinta: el descenso de gradiente, ${T(String.raw`\Delta w=\eta\,(y-\hat y)\,x`)} para la neurona lineal.</p>
+ <p><b>Límites de la analogía.</b> Las neuronas reales se comunican con pulsos en el tiempo, tienen miles de sinapsis y gran diversidad celular. La retropropagación que entrena las redes artificiales no es un mecanismo biológico demostrado; la regla hebbiana es la analogía biológica más cercana. Por eso la red artificial se considera un modelo inspirado en el cerebro, no una copia.</p>`,
+ controles:[
+  {grupo:'Anatomía de la neurona',items:[{type:'select',id:'parte',label:'Parte de la neurona',value:'todas',options:[['todas','Todas (vista general)'],['dendritas','Dendritas y espinas'],['soma','Soma'],['cono','Cono axónico'],['axon','Axón'],['mielina','Mielina y nodos de Ranvier'],['terminales','Terminales axónicos']]},{type:'check',id:'conex',label:'Resaltar las partes que forman la conexión',value:true}]},
+  {grupo:'Sinapsis y aprendizaje',items:[{type:'select',id:'tipo',label:'Tipo de sinapsis',value:'exc',options:[['exc','Excitatoria (glutamato)'],['inh','Inhibitoria (GABA)']]},rangeC('n','Repeticiones de coactivación n',0,60,1,15),rangeC('eta','Tasa de plasticidad η',0.02,0.3,0.01,0.08)]},
+  {grupo:'Red: ruta que se repite',items:[{type:'select',id:'ri',label:'Neurona de entrada',num:true,value:2,options:[[1,'Entrada 1'],[2,'Entrada 2'],[3,'Entrada 3']]},{type:'select',id:'rh',label:'Neurona intermedia',num:true,value:3,options:[[1,'Intermedia 1'],[2,'Intermedia 2'],[3,'Intermedia 3'],[4,'Intermedia 4']]},{type:'select',id:'ro',label:'Neurona de salida',num:true,value:1,options:[[1,'Salida 1'],[2,'Salida 2']]}]}],
+ botones:[{label:'Repetir 10 veces más',cls:'primary',fn(c){c.set('n',c.P.n+10)}},{label:'Reiniciar aprendizaje (n = 0)',fn(c){c.set('n',0)}}],
+ figs:[{wide:true,h:340}],
+ init:()=>({}),
+ calcular(P){
+  const w0=0.2,wmax=1,eta=P.eta,n=P.n,sg=P.tipo==='exc'?1:-1;
+  const wk=k=>wmax-(wmax-w0)*Math.pow(1-eta,k),w=wk(n),resp=sg*w;
+  const nv=Math.round(2+8*w),nr=Math.round(2+8*w);
+  const ks=Array.from({length:61},(_,k)=>k);
+  const fig0={data:[{x:ks,y:ks.map(wk),mode:'lines',line:{color:C.a,width:3},name:'fuerza w(n)'},{x:[0,60],y:[wmax,wmax],mode:'lines',line:{color:C.gray,dash:'dash'},name:'w máxima'},{x:[n],y:[w],mode:'markers',marker:{size:13,color:C.b,line:{color:'#fff',width:2}},name:'estado actual'}],layout:lay({title:ttl('Fuerza de la sinapsis según las coactivaciones'),xaxis:{title:'repeticiones de coactivación n'},yaxis:{title:'fuerza sináptica |w|',range:[0,1.1]},margin:{l:55,r:20,t:40,b:90},legend:{orientation:'h',y:-0.38}})};
+  const pd=PARTES[P.parte];
+  const det=pd?`<div class="msg"><b>${pd.n}</b><br><b>Función:</b> ${pd.fn}<br><b>¿Forma la conexión?</b> ${pd.conex}<br><b>Equivalente artificial:</b> ${pd.art}<br><b>Relación con el aprendizaje:</b> ${pd.apr}</div>`:`<div class="msg warn">Elige una parte de la neurona en “Controles” para ver su función, su equivalente artificial y su papel en el aprendizaje.</div>`;
+  const tabla=`<table class="t"><tr><th>Parte</th><th>¿Forma la conexión?</th><th>Equivalente artificial</th></tr>${PARTE_ORDEN.map(k=>`<tr${P.parte===k?' style="background:var(--panel2);font-weight:600"':''}><td>${PARTES[k].n}</td><td>${PARTES[k].cs}</td><td>${PARTES[k].art}</td></tr>`).join('')}</table>`;
+  const msg=n===0?`<div class="msg warn">La sinapsis está en su estado inicial (w = ${f(w0,2)}): la misma señal produce una respuesta débil. Aumenta las repeticiones para simular el aprendizaje.</div>`:`<div class="msg good">Tras <b>${n}</b> coactivaciones la sinapsis pasó de ${f(w0,2)} a <b>${f(w,2)}</b>: la misma señal presináptica produce una respuesta <b>${f(w/w0,1)}</b> veces mayor. Es el equivalente biológico de actualizar un peso ${T('w')}; en la red artificial solo cambió la ruta usada.</div>`;
+  return{extra:`<div class="stack">${anatomySVG(P)}${synapseSVG(P,w,sg,n)}${networkSVG(P,w,sg,n)}</div>`,figs:[fig0],panel:`<h3>Resultados</h3><div class="kpis">${kpi('Repeticiones n',n)}${kpi('Fuerza w(n)',f(w,3))}${kpi('Cambio Δw',f(Math.max(0,w-w0),3))}${kpi('Respuesta ('+(sg>0?'PPSE':'PPSI')+')',f(resp,3))}${kpi('Vesículas activas',nv+' / 10')}${kpi('Receptores activos',nr+' / 10')}</div>${msg}${det}<h3 style="margin-top:14px">Partes de la neurona y conexión</h3>${tabla}`};
+ }},
 /* ---------- 1. NEURONA ---------- */
 {id:'neurona',num:1,titulo:'De la neurona biológica a la artificial',cap:'Cap. 8.4 · Redes neuronales',
  resumen:'Una neurona artificial suma entradas ponderadas, les añade un sesgo y decide cuánto “dispara”. Manipula entradas, pesos y activación para ver cómo se comporta.',
@@ -490,6 +609,28 @@ const QUIZ=[
 const sec=(h,t)=>`<h3>${h}</h3><p>${t}</p>`;
 const INF=(t,rep,lec,int,cap)=>({t,h:sec('¿Qué representa?',rep)+sec('Cómo leerla',lec)+sec('Interpretación académica',int)+(cap?`<p class="muted"><b>Vínculo con el programa:</b> ${cap}</p>`:'')});
 const INFO={
+ intro:{
+  a:INF('Anatomía de una neurona',
+   `Esquema simplificado de una neurona: dendritas con espinas, soma con núcleo, cono axónico, axón con vaina de mielina y nodos de Ranvier, y terminales axónicos que se acercan a la membrana de la neurona siguiente. Los círculos verdes punteados marcan las partes que forman la conexión.`,
+   `La señal avanza de izquierda a derecha: se recibe en las dendritas, se integra en el soma, se decide en el cono axónico, se conduce por el axón y se transmite en los terminales. Al elegir una parte en los controles, las demás se atenúan y el panel describe su función.`,
+   `Solo dos partes intervienen en la conexión: los terminales axónicos (lado presináptico) y las dendritas, sobre todo las espinas dendríticas (lado postsináptico). El soma realiza una integración de entradas excitatorias e inhibitorias análoga a la suma ponderada ${T('z=\\sum_i w_ix_i+b')}; el cono axónico aplica el umbral, análogo a la activación; y el axón transporta la salida. Esta correspondencia es funcional y simplificada.`,
+   'Cap. 8.4 (introducción a las redes neuronales) y Cap. 2.1 (estructura del modelo lineal).'),
+  b:INF('La sinapsis química',
+   `Esquema de una sinapsis química: terminal presináptico con vesículas de neurotransmisor, hendidura sináptica, receptores en la membrana postsináptica y, abajo, la respuesta postsináptica relativa (positiva si es excitatoria y negativa si es inhibitoria). El número de vesículas, de moléculas liberadas y de receptores activos crece con la fuerza ${T('w')}.`,
+   `Aumenta las repeticiones de coactivación: aparecen más vesículas, más neurotransmisor en la hendidura y más receptores activos, y la barra de respuesta se alarga. Cambia el tipo a inhibitoria y la respuesta cambia de signo sin cambiar de magnitud.`,
+   `Es el punto donde se almacena el aprendizaje: la potenciación a largo plazo aumenta la liberación presináptica y el número de receptores postsinápticos. En el modelo, la respuesta ${T('\\pm w')} equivale al producto de la entrada por el peso, ${T('w_ix_i')}, y su signo, al carácter excitador o inhibidor de la conexión. Las cantidades del dibujo son ilustrativas, no medidas.`,
+   'Cap. 2.3 (interpretación de coeficientes) y Cap. 8.4.'),
+  c:INF('De la neurona a la red',
+   `Dos redes con la misma topología (3 entradas, 4 neuronas intermedias, 2 salidas): a la izquierda, un circuito biológico de neuronas sensoriales, interneuronas y neuronas motoras; a la derecha, una red artificial. Cada línea es una conexión; su grosor es la fuerza de la sinapsis o el peso ${T('w')}. La ruta elegida aparece resaltada.`,
+   `Cambia la ruta y las repeticiones: solo se engrosan las conexiones de la ruta usada; el resto permanece débil. Cuando el aprendizaje es hebbiano, lo que se usa junto se fortalece.`,
+   `En ambas redes el conocimiento reside en las conexiones, no en las neuronas individuales: aprender es modificar los pesos. En redes artificiales ese ajuste se calcula minimizando una función de pérdida (módulo 4); en el cerebro, la plasticidad depende de la actividad local. La retropropagación no es un mecanismo biológico demostrado, por lo que el parecido es de principio, no de implementación.`,
+   'Cap. 8.4 y Cap. 1.2 (función de pérdida y riesgo empírico).'),
+  0:INF('Fuerza de la sinapsis según las coactivaciones',
+   `Curva de la fuerza sináptica ${T('w(n)=w_{\\max}-(w_{\\max}-w_0)(1-\\eta)^n')} en función del número de coactivaciones ${T('n')}, con ${T('w_0=0{,}2')} y ${T('w_{\\max}=1')}. El punto marca el estado actual y la línea discontinua, el límite de saturación.`,
+   `La curva sube con rapidez al principio y se aplana al acercarse a ${T('w_{\\max}')}: los primeros aprendizajes producen los mayores cambios. Una ${T('\\eta')} mayor acerca la curva al máximo con menos repeticiones.`,
+   `Es una función de saturación exponencial (convergencia geométrica con razón ${T('1-\\eta')}), la misma forma que sigue el error en un descenso de gradiente cuadrático (módulo 4). La saturación refleja que una sinapsis no puede crecer sin límite, lo que evita que la actividad se desestabilice. El modelo es didáctico y no pretende ajustar datos fisiológicos.`,
+   'Cap. 1.2 y Cap. 8.4.')
+ },
  neurona:{
   d:INF('Diagrama de la neurona',
    `Grafo computacional de una neurona con tres entradas ${T('x_1,x_2,x_3')}, pesos ${T('w_i')}, sesgo ${T('b')}, suma ponderada ${T('z')} y salida ${T('a=\\varphi(z)')}. El grosor de cada conexión es proporcional a ${T('|w_i|')}; el color verde indica peso excitador (${T('w_i>0')}) y el rojo, inhibidor (${T('w_i<0')}). La intensidad del soma es proporcional a ${T('|a|')}.`,
@@ -589,13 +730,13 @@ function nav(path){
 }
 const footer=`<footer>NeuroLin · Proyecto de Jeferson Beltran, estudiante de Economía · Modelos Lineales (2018622) 2026-II · Universidad Nacional de Colombia</footer>`;
 function pageHome(){
-  view.innerHTML=`<section class="hero"><div class="txt"><span class="badge">Modelos Lineales · Cap. 8.4 · Introducción a las redes neuronales</span><h1>De la regresión lineal a la neurona que aprende</h1><p class="lead">Un simulador interactivo para entender cómo una sola neurona <b>predice</b>, <b>decide</b> y <b>aprende</b>, y cómo se relaciona con el modelo lineal, la regresión logística y la regularización.</p><div class="row"><a class="btn primary" href="#/m/neurona">Comenzar →</a><a class="btn" href="#/modulos">Ver los 5 módulos</a><a class="btn" href="#/desafio">Ir al desafío</a></div></div><div class="hero-img"><div class="bub">¡Hola! Soy <b>Nachito</b> 🦉 y te acompaño en cada módulo.</div><img src="${NACH}" alt="Nachito, mascota de la Universidad Nacional de Colombia"></div></section>
+  view.innerHTML=`<section class="hero"><div class="txt"><span class="badge">Modelos Lineales · Cap. 8.4 · Introducción a las redes neuronales</span><h1>De la regresión lineal a la neurona que aprende</h1><p class="lead">Un simulador interactivo para entender cómo una sola neurona <b>predice</b>, <b>decide</b> y <b>aprende</b>, y cómo se relaciona con el modelo lineal, la regresión logística y la regularización.</p><div class="row"><a class="btn primary" href="#/m/intro">Comenzar →</a><a class="btn" href="#/modulos">Ver los 6 módulos</a><a class="btn" href="#/desafio">Ir al desafío</a></div></div><div class="hero-img"><div class="bub">¡Hola! Soy <b>Nachito</b> 🦉 y te acompaño en cada módulo.</div><img src="${NACH}" alt="Nachito, mascota de la Universidad Nacional de Colombia"></div></section>
   <h2>Ruta de aprendizaje</h2><div class="flow">${VIS.map((m,i)=>`<span class="s">${m.num}. ${m.titulo.split(':')[0].replace('De la neurona biológica a la artificial','Neurona')}</span>${i<VIS.length-1?'→':''}`).join('')}</div>
   <div class="grid">${VIS.map(cardMod).join('')}</div>
   <h2>¿Cómo se usa?</h2><div class="grid"><div class="card"><h3>1 · Controles</h3><p>Mueve sliders o escribe valores exactos para cambiar datos y parámetros de la neurona.</p></div><div class="card"><h3>2 · Gráficas</h3><p>Todo se recalcula al instante. Las gráficas son interactivas (zoom, hover).</p></div><div class="card"><h3>3 · Teoría y tutorial</h3><p>Cada módulo tiene ficha de teoría con fórmulas y un tutorial guiado.</p></div></div>${footer}`;
 }
 const cardMod=m=>`<a class="card mcard" href="#/m/${m.id}"><span class="num">${m.num}</span><h3>${m.titulo}</h3><span class="badge">${m.cap}</span><p class="muted">${m.resumen}</p></a>`;
-function pageModulos(){view.innerHTML=`<h1>Módulos</h1><p class="lead">Cinco simuladores que llevan la idea de modelo lineal hasta la neurona artificial.</p><div class="grid">${VIS.map(cardMod).join('')}</div>${footer}`}
+function pageModulos(){view.innerHTML=`<h1>Módulos</h1><p class="lead">Una introducción anatómica y cinco simuladores que llevan la idea de modelo lineal hasta la neurona artificial.</p><div class="grid">${VIS.map(cardMod).join('')}</div>${footer}`}
 function controlHTML(c){
   if(c.type==='select')return `<label class="ctl"><span>${c.label}</span><select data-id="${c.id}">${c.options.map(o=>`<option value="${o[0]}"${String(o[0])===String(c.value)?' selected':''}>${o[1]}</option>`).join('')}</select></label>`;
   if(c.type==='check')return `<label class="chk"><input type="checkbox" data-id="${c.id}"${c.value?' checked':''}> ${c.label}</label>`;
@@ -648,10 +789,10 @@ function pageDesafio(){
   <button class="btn primary" id="grade">Calificar</button><div id="score" style="margin-top:12px"></div>${footer}`;
   renderTex(view);
   $('#grade').onclick=()=>{let ok=0;QUIZ.forEach((q,i)=>{const s=$(`input[name=q${i}]:checked`),fb=$('#fb'+i);if(!s){fb.innerHTML='<span class="warn">Sin responder.</span> '+q.e}else if(+s.value===q.c){ok++;fb.innerHTML='<span style="color:var(--pos)">✔ Correcto.</span> '+q.e}else fb.innerHTML=`<span style="color:var(--neg)">✘ Incorrecto.</span> Respuesta: <b>${q.o[q.c]}</b>. ${q.e}`;renderTex(fb)});
-    $('#score').innerHTML=`<div class="msg ${ok>=6?'good':ok>=4?'warn':'bad'}"><b>${ok} / ${QUIZ.length}</b> — ${ok>=6?'¡Excelente dominio!':ok>=4?'Buen avance; repasa la teoría de los módulos donde fallaste.':'Repasa los módulos 1 a 5 y vuelve a intentarlo.'}</div>${nachito(ok>=6?'¡Bravo! Eres un búho de los modelos lineales. 🦉':ok>=4?'¡Vas muy bien! Un repaso rápido y lo dominas.':'¡Ánimo! Cada intento es una iteración del descenso de gradiente: sigue bajando el error.')}`};
+    $('#score').innerHTML=`<div class="msg ${ok>=6?'good':ok>=4?'warn':'bad'}"><b>${ok} / ${QUIZ.length}</b> — ${ok>=6?'¡Excelente dominio!':ok>=4?'Buen avance; repasa la teoría de los módulos donde fallaste.':'Repasa los módulos 0 a 5 y vuelve a intentarlo.'}</div>${nachito(ok>=6?'¡Bravo! Eres un búho de los modelos lineales. 🦉':ok>=4?'¡Vas muy bien! Un repaso rápido y lo dominas.':'¡Ánimo! Cada intento es una iteración del descenso de gradiente: sigue bajando el error.')}`};
 }
 function pageAcerca(){
-  view.innerHTML=`<h1>Acerca de</h1><div class="card"><img class="about-img" src="${NACH}" alt="Nachito, mascota de la Universidad Nacional de Colombia"><h3>NeuroLin · Simulador de neuronas</h3><p>Proyecto desarrollado por <b>Jeferson Beltran</b>, estudiante de <b>Economía</b>, para la asignatura <b>Modelos Lineales (2018622)</b>, grupo 1, semestre 2026-II, Departamento de Estadística, Facultad de Ciencias, Universidad Nacional de Colombia (sede Bogotá).</p><p>El simulador replica el comportamiento de una neurona artificial para <b>predecir</b>, <b>decidir</b> y <b>aprender</b>, conectándola con los temas del programa: Cap. 1 (predicción), Cap. 2 (modelo lineal), Cap. 4 (validación, Ridge y LASSO), Cap. 7 (regresión logística) y Cap. 8.4 (redes neuronales).</p><p><b>Nachito</b>, la mascota de la Universidad Nacional de Colombia, acompaña al estudiante en los módulos, el tutorial y el desafío. La imagen se usa con fines académicos.</p></div>
+  view.innerHTML=`<h1>Acerca de</h1><div class="card"><img class="about-img" src="${NACH}" alt="Nachito, mascota de la Universidad Nacional de Colombia"><h3>NeuroLin · Simulador de neuronas</h3><p>Proyecto desarrollado por <b>Jeferson Beltran</b>, estudiante de <b>Economía</b>, para la asignatura <b>Modelos Lineales (2018622)</b>, grupo 1, semestre 2026-II, Departamento de Estadística, Facultad de Ciencias, Universidad Nacional de Colombia (sede Bogotá).</p><p>El simulador replica el comportamiento de una neurona artificial para <b>predecir</b>, <b>decidir</b> y <b>aprender</b>, conectándola con los temas del programa: Cap. 1 (predicción), Cap. 2 (modelo lineal), Cap. 4 (validación, Ridge y LASSO), Cap. 7 (regresión logística) y Cap. 8.4 (redes neuronales).</p><p><b>Nachito</b>, la mascota de la Universidad Nacional de Colombia, acompaña al estudiante en los módulos, el tutorial y el desafío.</p></div>
   <h2>Tecnología</h2><p>HTML, CSS y JavaScript sin dependencias de compilación. Gráficas con <b>Plotly.js</b> y fórmulas con <b>KaTeX</b>. Todos los datos se generan en el navegador con semillas fijas para que los resultados sean reproducibles.</p>
   <h2>Bibliografía del programa</h2><ul><li>Hastie, T., Tibshirani, R., Friedman, J. (2009). <i>The Elements of Statistical Learning</i>. Springer.</li><li>Montgomery, D., Peck, E., Vining, G. (2021). <i>Introduction to Linear Regression Analysis</i>. Wiley.</li><li>Ravishanker, N., Chi, Z., Dey, D. (2021). <i>A First Course in Linear Model Theory</i>. CRC Press.</li><li>Dobson, A., Barnett, A. (2018). <i>An Introduction to Generalized Linear Models</i>. CRC Press.</li></ul>
   <h2>Estructura</h2><p class="muted">Inicio · Módulos (controles + gráficas + resultados + teoría + tutorial) · Desafío · Acerca de. Inspirada en la organización de un simulador por materias, con contenido propio.</p>${footer}`;
