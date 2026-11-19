@@ -82,6 +82,11 @@ output{font-variant-numeric:tabular-nums;color:var(--link);font-weight:600;font-
 .btns{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:0;background:none;border:0;box-shadow:none}
 .fig{padding:8px}
+.fighead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 4px 6px;font-size:13px;color:var(--mut);font-weight:500}
+.fighead .btn{padding:4px 12px;font-size:13px;color:var(--link);border-color:var(--link)}
+.fighead .btn:hover{background:var(--panel2)}
+#modal-body h3{margin:16px 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:.6px;color:var(--link)}
+#modal-body p{text-align:justify}
 .fig.wide{grid-column:1/-1}
 #extra{margin-bottom:14px}
 #extra:empty{display:none}
@@ -259,7 +264,7 @@ function neuronSVG(x,w,b,z,a){
   const ys=[45,115,185],inten=clamp(Math.abs(a),0,1),sub=['₁','₂','₃'];
   const lines=ys.map((y,i)=>`<line x1="97" y1="${y}" x2="292" y2="115" stroke-width="${(1+Math.abs(w[i])*2.2).toFixed(1)}" style="stroke:var(${w[i]>=0?'--pos':'--neg'})" opacity=".85"/><text x="195" y="${(y+115)/2-6}" text-anchor="middle" class="svg-s">w${sub[i]}=${f(w[i],1)}</text>`).join('');
   const ins=ys.map((y,i)=>`<circle cx="75" cy="${y}" r="21" class="svg-node"/><text x="75" y="${y-2}" text-anchor="middle" class="svg-t">x${sub[i]}</text><text x="75" y="${y+12}" text-anchor="middle" class="svg-s">${f(x[i],1)}</text>`).join('');
-  return `<div class="card svgbox"><svg viewBox="0 0 540 240" role="img" aria-label="Diagrama de la neurona">
+  return `<div class="card svgbox"><div class="fighead"><span>Diagrama de la neurona</span><button class="btn sm" data-info="d" title="Interpretación académica del diagrama" aria-label="Interpretación del diagrama">ⓘ Interpretación</button></div><svg viewBox="0 0 540 240" role="img" aria-label="Diagrama de la neurona">
   <defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--acc)"/></marker></defs>
   ${lines}${ins}
   <line x1="330" y1="48" x2="330" y2="76" style="stroke:var(--mut)" stroke-width="${(1+Math.abs(b)*1.5).toFixed(1)}"/>
@@ -479,6 +484,99 @@ const QUIZ=[
  {q:'Al subir el umbral de decisión t en un clasificador probabilístico, en general:',o:['Aumentan los falsos positivos','Disminuyen los falsos positivos y aumentan los falsos negativos','No cambia nada','Aumenta el AUC'],c:1,e:'Se exige más evidencia para decir “clase 1”: menos falsos positivos, más falsos negativos. El AUC no depende de t.'}
 ];
 
+/* ============ interpretación académica de las figuras ============ */
+const sec=(h,t)=>`<h3>${h}</h3><p>${t}</p>`;
+const INF=(t,rep,lec,int,cap)=>({t,h:sec('¿Qué representa?',rep)+sec('Cómo leerla',lec)+sec('Interpretación académica',int)+(cap?`<p class="muted"><b>Vínculo con el programa:</b> ${cap}</p>`:'')});
+const INFO={
+ neurona:{
+  d:INF('Diagrama de la neurona',
+   `Grafo computacional de una neurona con tres entradas ${T('x_1,x_2,x_3')}, pesos ${T('w_i')}, sesgo ${T('b')}, suma ponderada ${T('z')} y salida ${T('a=\\varphi(z)')}. El grosor de cada conexión es proporcional a ${T('|w_i|')}; el color verde indica peso excitador (${T('w_i>0')}) y el rojo, inhibidor (${T('w_i<0')}). La intensidad del soma es proporcional a ${T('|a|')}.`,
+   `Se recorre de izquierda a derecha: cada entrada se amplifica o atenúa por su peso, el soma las agrega junto con el sesgo y la función de activación transforma el resultado. Una conexión gruesa implica que esa entrada domina la decisión de la neurona.`,
+   `El predictor ${T('z=\\mathbf w^\\top\\mathbf x+b')} es lineal en los parámetros, es decir, idéntico al predictor lineal de un modelo de regresión. La única diferencia estructural entre la neurona y el modelo lineal clásico es la no linealidad ${T('\\varphi')}. El analogismo biológico (dendritas, sinapsis, umbral) es una metáfora funcional, no una equivalencia fisiológica.`,
+   'Cap. 2.1–2.2 (modelo lineal y representación matricial) y Cap. 8.4 (redes neuronales).'),
+  0:INF('Aportes a z',
+   `Descomposición aditiva de la suma ponderada: cada barra es el aporte ${T('w_ix_i')} de una entrada, la barra ${T('b')} es el sesgo y la última barra es el total ${T('z=\\sum_i w_ix_i+b')}.`,
+   `Las barras positivas empujan a la neurona hacia activarse y las negativas hacia el reposo. La neurona dispara cuando la barra total ${T('z')} es no negativa. Compara qué entrada pesa más en valor absoluto.`,
+   `Por ser un predictor lineal, el efecto de cada variable es aditivo y separable: no hay interacciones entre entradas dentro de ${T('z')}. Esto permite interpretar cada ${T('w_i')} como el cambio en ${T('z')} por unidad de ${T('x_i')}, ceteris paribus, igual que un coeficiente de regresión. Al comparar aportes debe recordarse que dependen de la escala de las variables.`,
+   'Cap. 2.2–2.3 (interpretación de coeficientes).'),
+  1:INF('Función de activación',
+   `Gráfica de ${T('a=\\varphi(z)')} para la activación elegida. El punto marca el estado actual ${T('(z,\\varphi(z))')} de la neurona.`,
+   `Observa el rango de salida y la pendiente en torno al punto. El escalón es discontinuo; la sigmoide es acotada en ${T('(0,1)')}; la tangente hiperbólica en ${T('(-1,1)')}; la ReLU es lineal por tramos y no acotada; la identidad no transforma.`,
+   `La sigmoide tiene derivada ${T('\\varphi\'(z)=\\varphi(z)(1-\\varphi(z))\\le 1/4')}, máxima en ${T('z=0')}: en las colas se satura y los gradientes se desvanecen, lo que ralentiza el aprendizaje. Su salida se interpreta como probabilidad porque es la inversa del enlace logit, ${T('\\operatorname{logit}(p)=\\log\\frac{p}{1-p}=z')}. Con la identidad, la neurona es un modelo lineal; sin una no linealidad, apilar capas no aumentaría la capacidad expresiva.`,
+   'Cap. 7 (función de enlace logit) y Cap. 8.4.')
+ },
+ predice:{
+  0:INF('Dispersión y recta ajustada',
+   `Nube de puntos ${T('(x_i,y_i)')}, la recta de la neurona ${T('\\hat y=wx+b')}, la recta de mínimos cuadrados ordinarios (discontinua) y, si se activa, los residuos como segmentos verticales.`,
+   `El criterio ECM equivale a minimizar la suma de los cuadrados de la longitud de los segmentos verticales. Cualquier recta distinta de la de MCO tiene un ECM estrictamente mayor. Cuando la recta de la neurona se superpone a la discontinua, el ECM alcanza su mínimo.`,
+   `La pendiente ${T('\\hat w=S_{xy}/S_{xx}')} estima el cambio esperado de ${T('y')} por unidad de ${T('x')}; el intercepto ${T('\\hat b=\\bar y-\\hat w\\bar x')} garantiza que la recta pase por el centroide ${T('(\\bar x,\\bar y)')}. Geométricamente, ${T('\\hat{\\mathbf y}')} es la proyección ortogonal de ${T('\\mathbf y')} sobre el espacio columna de ${T('X')}. Un mayor ruido ${T('\\sigma')} disminuye ${T('R^2')} y ensancha la incertidumbre de ${T('\\hat w')}, cuya varianza es ${T('\\sigma^2/S_{xx}')}.`,
+   'Cap. 1.3 y 1.5 (mejor predictor lineal, proyecciones) y Cap. 2.3 (estimación e inferencia).'),
+  1:INF('Residuos frente a x',
+   `Gráfico de residuos ${T('e_i=y_i-\\hat y_i')} de la neurona en función de la variable explicativa. La línea punteada marca ${T('e=0')}.`,
+   `Un buen ajuste muestra una nube sin estructura, centrada en cero y con amplitud vertical aproximadamente constante. Una curvatura sugiere una relación no lineal omitida; un embudo (dispersión creciente) sugiere heterocedasticidad; puntos aislados lejos del resto sugieren atípicos o puntos influyentes.`,
+   `Con el estimador MCO e intercepto se cumplen las condiciones de ortogonalidad ${T('\\sum e_i=0')} y ${T('\\sum x_ie_i=0')}, de modo que no puede haber tendencia lineal en este gráfico. Si la recta de la neurona no es la de MCO, aparece un sesgo sistemático (media distinta de cero o correlación con ${T('x')}). Este diagnóstico es informal; su fundamento son los supuestos de Gauss–Markov: errores de media cero, varianza constante e incorrelacionados.`,
+   'Cap. 2.2 (supuestos) y Cap. 3.2, 3.4 y 3.5 (atípicos, transformaciones estabilizadoras y mínimos cuadrados ponderados).')
+ },
+ decide:{
+  0:INF('Probabilidad estimada y frontera de decisión',
+   `Mapa de color de ${T('\\hat p(\\mathbf x)=\\sigma(w_1x_1+w_2x_2+b)')} sobre el plano de entradas. La línea sólida es la frontera ${T('\\hat p=t')}; los puntos son las observaciones por clase y los círculos rojos, las clasificaciones erróneas.`,
+   `Los tonos intensos indican alta confianza; el tono intermedio se concentra alrededor de la frontera, donde ${T('\\hat p\\approx 0{,}5')}. La separación perpendicular entre un punto y la frontera es proporcional a la confianza de la clasificación. Un solape entre los grupos implica errores inevitables.`,
+   `La frontera es una recta porque ${T('\\{\\mathbf x:\\mathbf w^\\top\\mathbf x+b=\\operatorname{logit}(t)\\}')} es un hiperplano; el vector ${T('\\mathbf w')} es su normal y apunta hacia la dirección de mayor logaritmo de la razón de momios. Por tanto ${T('e^{w_j}')} es la razón de momios multiplicativa por unidad de ${T('x_j')}. Con clases solapadas existe un error de Bayes irreducible; con separación perfecta el estimador de máxima verosimilitud no existe porque ${T('\\|\\mathbf w\\|\\to\\infty')}.`,
+   'Cap. 7.1–7.3 (regresión logística, estimación).'),
+  1:INF('Curva ROC',
+   `Gráfica de la sensibilidad (${T('TPR')}) frente a ${T('1-\\text{especificidad}\\ (FPR)')} al variar el umbral ${T('t')} de 1 a 0. La diagonal punteada es un clasificador aleatorio y el punto marca el umbral actual.`,
+   `Una curva más cercana a la esquina superior izquierda indica mejor discriminación. El área bajo la curva (AUC) resume el desempeño: 0,5 equivale al azar y 1 a una separación perfecta. Mover el umbral desplaza el punto a lo largo de la curva sin cambiarla.`,
+   `El AUC es la probabilidad de que un caso positivo reciba un puntaje mayor que uno negativo, ${T('\\mathrm{AUC}=P(s(X^+)>s(X^-))')}, equivalente al estadístico de Mann–Whitney normalizado. Es invariante a transformaciones monótonas del puntaje y no depende de ${T('t')}; mide discriminación, no calibración de las probabilidades. La elección del punto operativo requiere especificar los costos relativos de los falsos positivos y negativos.`,
+   'Cap. 4.1 (indicadores de capacidad predictiva) y Cap. 7.5 (bondad de ajuste).'),
+  2:INF('Matriz de confusión',
+   `Tabla de contingencia entre la clase real y la predicha al umbral ${T('t')} vigente: verdaderos positivos (TP), falsos positivos (FP), falsos negativos (FN) y verdaderos negativos (TN).`,
+   `La diagonal corresponde a los aciertos; las celdas fuera de ella, a los errores. Al subir ${T('t')} disminuyen los FP y aumentan los FN, y viceversa. A partir de la tabla: exactitud ${T('=\\frac{TP+TN}{n}')}, precisión ${T('=\\frac{TP}{TP+FP}')}, sensibilidad ${T('=\\frac{TP}{TP+FN}')}.`,
+   `La exactitud es el complemento del riesgo empírico bajo pérdida 0-1 y puede ser engañosa con clases desbalanceadas; por ello se complementa con precisión, sensibilidad y ${T('F_1')}. Dado que se evalúa en los mismos datos con que se estimó la neurona, estas métricas son optimistas; una estimación honesta requiere una muestra de prueba.`,
+   'Cap. 1.2 (función de pérdida y riesgo empírico) y Cap. 4.1–4.2.')
+ },
+ aprende:{
+  0:INF('Superficie de la pérdida y trayectoria',
+   `Curvas de nivel de ${T('\\log_{10}L(w,b)')}, con ${T('L')} el ECM. La estrella es el mínimo global (solución de MCO), el círculo blanco es el punto inicial y la línea naranja es el recorrido del descenso de gradiente.`,
+   `En cada paso la neurona se mueve en sentido contrario al gradiente, que es perpendicular a las curvas de nivel. Curvas muy alargadas producen un recorrido en zigzag; un ${T('\\eta')} excesivo genera oscilaciones crecientes que salen del dominio mostrado (divergencia).`,
+   `Como ${T('L')} es una función cuadrática convexa, sus curvas de nivel son elipses concéntricas y el mínimo es único. El descenso converge geométricamente con razón ${T('\\rho=\\max_i|1-\\eta\\lambda_i|')}, y exige ${T('\\eta<2/\\lambda_{\\max}')}. El cociente ${T('\\kappa=\\lambda_{\\max}/\\lambda_{\\min}')} (número de condición de ${T('X^\\top X')}) controla la velocidad: la multicolinealidad lo agranda y vuelve lento el aprendizaje.`,
+   'Cap. 1.2 (riesgo empírico), Cap. 3.3 (multicolinealidad) y Cap. 8.4.'),
+  1:INF('Pérdida por iteración',
+   `Valor del ECM ${T('L(\\theta_k)')} en cada iteración ${T('k')}, en escala logarítmica.`,
+   `Una recta descendente indica convergencia lineal (geométrica) cuya pendiente es ${T('\\log\\rho')}. Una meseta indica avance lento en la dirección de menor curvatura; un crecimiento sostenido indica divergencia.`,
+   `El ECM no puede descender por debajo del mínimo de MCO, que es la cota inferior alcanzable por este modelo; la diferencia ${T('L(\\theta_k)-L(\\hat\\theta)')} es el error de optimización. Se suele detener el entrenamiento cuando la reducción relativa de la pérdida es menor que una tolerancia prefijada.`,
+   'Cap. 1.2 y Cap. 8.1.'),
+  2:INF('Ajuste actual frente a los datos',
+   `Los datos, la recta de MCO (discontinua) y la recta de la neurona con los parámetros de la iteración actual.`,
+   `Al avanzar el entrenamiento la recta de la neurona se aproxima a la de MCO hasta superponerse. Compárala con el recorrido de la primera figura: ambas muestran el mismo proceso en el espacio de datos y en el espacio de parámetros.`,
+   `El aprendizaje es una estimación iterativa de los parámetros; en el límite, el estimador por descenso de gradiente coincide con ${T('\\hat{\\boldsymbol\\beta}=(X^\\top X)^{-1}X^\\top\\mathbf y')}. Detener el entrenamiento antes (parada temprana) produce un estimador contraído hacia el punto inicial, con un efecto análogo a la regularización.`,
+   'Cap. 2.3 (estimación) y Cap. 4.4 (regularización).')
+ },
+ generaliza:{
+  0:INF('Ajuste polinómico: entrenamiento y prueba',
+   `La función verdadera (discontinua), los puntos de entrenamiento con los que se ajusta la neurona, una muestra de puntos de prueba no usados en el ajuste y la curva ajustada con el grado y la penalización vigentes.`,
+   `En el subajuste la curva es demasiado rígida y se aleja sistemáticamente de la función verdadera. En el sobreajuste la curva atraviesa los puntos de entrenamiento pero oscila entre ellos y en los extremos, alejándose de los puntos de prueba. Un buen ajuste sigue la tendencia sin seguir el ruido.`,
+   `Ilustra el compromiso sesgo–varianza, ${T('\\mathbb E[(y-\\hat f)^2]=\\text{sesgo}^2+\\text{var}+\\sigma^2')}: los modelos complejos reducen el sesgo pero aumentan la varianza. Las oscilaciones en los bordes son el fenómeno de Runge propio de polinomios de alto grado. La regularización estabiliza la curva al contraer los coeficientes.`,
+   'Cap. 4.1–4.2 (capacidad predictiva, entrenamiento–testeo) y Cap. 4.4.'),
+  1:INF('Error frente a la complejidad',
+   `ECM de entrenamiento y de prueba para los grados 1 a 12, con la penalización vigente. La línea verde es la varianza del ruido ${T('\\sigma^2')} (error irreducible) y la vertical punteada marca el grado actual.`,
+   `El error de entrenamiento decrece al aumentar el grado (modelos anidados); el de prueba describe una U. El mínimo del error de prueba señala la complejidad óptima, y la brecha entre ambas curvas mide el optimismo del error de entrenamiento.`,
+   `Ningún modelo puede alcanzar en prueba un ECM inferior a ${T('\\sigma^2')} en promedio. La elección del hiperparámetro (grado, ${T('\\lambda')}) debe hacerse con datos de validación y no con el error de entrenamiento. Con ${T('\\lambda>0')} la curva de prueba se aplana: el modelo se vuelve menos sensible al grado porque la penalización limita su capacidad efectiva.`,
+   'Cap. 4.2–4.3 (validación y selección de variables) y Cap. 4.4.'),
+  2:INF('Coeficientes estimados',
+   `Barras con los coeficientes ${T('\\hat\\beta_j')} del modelo ${T('y=\\beta_0+\\sum_j\\beta_jx^j')} sobre variables estandarizadas, para el grado y la penalización vigentes.`,
+   `Magnitudes grandes con signos alternantes revelan inestabilidad. Con Ridge todas las barras se encogen de forma gradual; con LASSO algunas desaparecen (valen exactamente cero).`,
+   `Las potencias de ${T('x')} están fuertemente correlacionadas, de modo que sin penalización ${T('X^\\top X')} es casi singular y las varianzas de los coeficientes se inflan (multicolinealidad). Ridge, con solución ${T('(X^\\top X/n+\\lambda I)^{-1}X^\\top\\mathbf y/n')}, mejora el condicionamiento a costa de un sesgo. LASSO, por el umbral suave, realiza selección de variables, y su número de coeficientes no nulos es un estimador de los grados de libertad del modelo.`,
+   'Cap. 3.3 (multicolinealidad) y Cap. 4.3–4.4 (selección, Ridge y LASSO).')
+ },
+ reto:{
+  0:INF('Ajuste a mano de la recta',
+   `Datos con tendencia lineal oculta y la recta de la neurona. Opcionalmente se muestran el centroide ${T('(\\bar x,\\bar y)')} y la recta de MCO.`,
+   `Se busca minimizar la razón ${T('\\mathrm{ECM}_{\\text{neurona}}/\\mathrm{ECM}_{\\text{MCO}}\\ge 1')}. Primero se desplaza la recta hasta pasar por el centroide y luego se ajusta la pendiente hasta equilibrar los residuos a ambos lados.`,
+   `La solución de MCO satisface las ecuaciones normales ${T('\\sum e_i=0')} y ${T('\\sum x_ie_i=0')}; la primera equivale a que la recta contenga al centroide y la segunda determina la pendiente. Ningún ajuste manual puede superar al estimador de MCO en ECM, que es el mínimo global de la función cuadrática.`,
+   'Cap. 2.3 (estimación por mínimos cuadrados).')
+ }
+};
+
 /* ============ páginas ============ */
 const view=$('#view');
 let CUR=null;
@@ -523,7 +621,7 @@ function pageSim(m){
   ${nachito(TIPS[m.id])}
   <details class="card" open><summary>Planteamiento</summary>${m.plan}</details>
   <div class="sim"><section class="card ctrl" id="panel-ctrl"><h3>Controles</h3>${m.controles.map(g=>`<div class="grp">${g.grupo}</div>${g.items.map(controlHTML).join('')}`).join('')}<div class="btns">${(m.botones||[]).map((b,i)=>`<button class="btn ${b.cls||''}" data-btn="${i}">${b.label}</button>`).join('')}</div></section>
-  <section><div id="extra"></div><div id="figs" class="figs">${m.figs.map((g,i)=>`<div class="card fig${g.wide?' wide':''}"><div id="fig${i}" style="height:${g.h}px"></div></div>`).join('')}</div><div class="card res" id="panel-res"></div></section></div>${m.oculto?'':`<p style="margin-top:18px">${nextLink(m)}</p>`}${footer}`;
+  <section><div id="extra"></div><div id="figs" class="figs">${m.figs.map((g,i)=>`<div class="card fig${g.wide?' wide':''}"><div class="fighead"><span>Figura ${i+1}</span><button class="btn sm" data-info="${i}" title="Interpretación académica de esta gráfica" aria-label="Interpretación de la figura ${i+1}">ⓘ Interpretación</button></div><div id="fig${i}" style="height:${g.h}px"></div></div>`).join('')}</div><div class="card res" id="panel-res"></div></section></div>${m.oculto?'':`<p style="margin-top:18px">${nextLink(m)}</p>`}${footer}`;
   renderTex($('details'));
   const ctrl=$('#panel-ctrl');
   ctrl.addEventListener('input',e=>{
@@ -535,6 +633,7 @@ function pageSim(m){
   ctrl.addEventListener('click',e=>{const b=e.target.closest('[data-btn]');if(!b)return;const r=m.botones[+b.dataset.btn].fn(ctx);if(r!==false)render()});
   $('#btn-teoria').onclick=()=>openModal('Teoría · '+m.titulo,m.teoria);
   $('#btn-tutorial').onclick=()=>startTutorial(0);
+  view.onclick=e=>{const b=e.target.closest('[data-info]');if(!b)return;const it=(INFO[m.id]||{})[b.dataset.info];if(it)openModal('Interpretación · '+it.t,it.h)};
   CUR={m,S,P};
   render();
 }
@@ -566,6 +665,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();endTut
 const TUT=[
  {sel:'#panel-ctrl',t:'1 · Controles',d:'Aquí cambias los datos y los parámetros de la neurona. Cada slider tiene también una caja numérica para valores exactos. Los botones ejecutan acciones como entrenar o reiniciar.'},
  {sel:'#figs',t:'2 · Gráficas',d:'Se actualizan en tiempo real. Puedes hacer zoom, mover y pasar el cursor sobre los puntos para ver valores.'},
+ {sel:'.fighead .btn',t:'2b · Interpretación',d:'Cada figura tiene un botón ⓘ con su interpretación académica: qué representa, cómo leerla y qué significa estadísticamente.'},
  {sel:'#panel-res',t:'3 · Resultados',d:'Indicadores numéricos y un mensaje de interpretación: te dice si lo que ves es buen ajuste, sobreajuste, divergencia, etc.'},
  {sel:'#btn-teoria',t:'4 · Teoría',d:'Abre la ficha con las fórmulas y la conexión con los capítulos del programa de Modelos Lineales.'}
 ];
