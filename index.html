@@ -52,6 +52,7 @@ main{padding:24px clamp(16px,3vw,40px) 40px;max-width:1320px;width:100%}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
 .crumbs{font-size:13px;color:var(--mut)}
 .lead{font-size:16px;color:var(--mut);max-width:80ch}
+.vidwrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-top:10px}.vidwrap video{width:240px;max-width:100%;aspect-ratio:9/16;border-radius:10px;background:#000}.vidwrap p{flex:1;min-width:220px;margin:0}
 .badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);color:var(--mut)}
 .hero{padding:34px clamp(18px,4vw,44px);border-radius:20px;background:var(--hero-bg);border:1px solid var(--line);position:relative;overflow:hidden}
 .hero h1{font-size:clamp(28px,4.2vw,46px)}
@@ -523,7 +524,7 @@ const MODS=[
   <div class="msg ${near?'good':'warn'}">${near?'La neurona coincide con la solución de mínimos cuadrados: ya no se puede reducir más el ECM.':`Tu neurona está <b>${f((ratio-1)*100,1)} %</b> por encima del error mínimo posible. Valores reales del proceso: β₀=2, β₁=1.5.`}</div>`};
  }},
 /* ---------- 3. DECIDE ---------- */
-{id:'decide',num:3,titulo:'Una neurona que decide: clasificación',cap:'Cap. 7 y 4.1 · Regresión logística y desempeño',
+{id:'decide',num:3,video:{src:'assets/neurona-decide.mp4',alt:'Animación: una neurona estima la probabilidad de vender un piso',nota:'Una neurona recibe precio, tamaño y antigüedad, los multiplica por pesos y los suma (Σ). Esa suma puede valer cualquier número; la función sigmoide la convierte en una probabilidad entre 0 y 1. Aquí obtiene 87 % de probabilidad de venta. Después verás lo mismo con dos grupos de puntos.'},titulo:'Una neurona que decide: clasificación',cap:'Cap. 7 y 4.1 · Regresión logística y desempeño',
  resumen:'Con activación sigmoide la neurona estima una probabilidad y decide con un umbral. Mueve la frontera y observa matriz de confusión, ROC y métricas.',
  plan:`<p>Dos grupos de puntos en el plano. La neurona calcula ${T('p=\\sigma(w_1x_1+w_2x_2+b)')} y decide “clase 1” si ${T('p\\ge t')}.</p><p><b>Reto:</b> ubica la frontera a mano para maximizar la exactitud; luego pulsa “Entrenar” y compara. Sube el grupo de ruido y observa qué le pasa al AUC y a los errores. ¿Cómo cambia la decisión al mover el umbral ${T('t')}?</p>`,
  teoria:`<p><b>Neurona sigmoide = regresión logística.</b></p>${T(String.raw`p=P(y=1\mid\mathbf x)=\sigma(\mathbf w^\top\mathbf x+b)=\frac{1}{1+e^{-(\mathbf w^\top\mathbf x+b)}},\qquad \log\frac{p}{1-p}=\mathbf w^\top\mathbf x+b`,true)}
@@ -828,6 +829,7 @@ function pageSim(m){
   <div class="titlerow"><div><span class="badge">${m.oculto?'Desafío':'Módulo '+m.num} · ${m.cap}</span><h1>${m.titulo}</h1></div><div class="acts"><button class="btn" id="btn-tutorial">Tutorial</button><button class="btn primary" id="btn-teoria">📘 Teoría</button></div></div>
   <p class="lead">${m.resumen}</p>
   ${nachito(TIPS[m.id])}
+  ${m.video?`<details class="card vid" open><summary>🎬 Video: del piso a la probabilidad</summary><div class="vidwrap"><video controls preload="metadata" playsinline src="${m.video.src}" aria-label="${m.video.alt}"></video><p class="muted">${m.video.nota}</p></div></details>`:''}
   <details class="card" open><summary>Planteamiento</summary>${m.plan}</details>
   <div class="sim"><section class="card ctrl" id="panel-ctrl"><h3>Controles</h3>${m.controles.map(g=>`<div class="grp">${g.grupo}</div>${g.items.map(controlHTML).join('')}`).join('')}<div class="btns">${(m.botones||[]).map((b,i)=>`<button class="btn ${b.cls||''}" data-btn="${i}">${b.label}</button>`).join('')}</div></section>
   <section><div id="extra"></div><div id="figs" class="figs">${m.figs.map((g,i)=>`<div class="card fig${g.wide?' wide':''}"><div class="fighead"><span>Figura ${i+1}</span><button class="btn sm" data-info="${i}" title="Interpretación académica de esta gráfica" aria-label="Interpretación de la figura ${i+1}">ⓘ Interpretación</button></div><div id="fig${i}" style="height:${g.h}px"></div></div>`).join('')}</div><div class="card res" id="panel-res"></div></section></div>${m.oculto?'':`<p style="margin-top:18px">${nextLink(m)}</p>`}${footer}`;

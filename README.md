@@ -21,6 +21,7 @@ Incluye ficha de teoría con fórmulas, tutorial guiado, desafío y cuestionario
 | `NeuroLin.html` | Versión descargable en un solo archivo (Nachito embebido); solo necesita internet para Plotly y KaTeX |
 | `NeuroLin_Fundamentos_Teoricos_y_Practicos.docx` | Documento de fundamentos teóricos y prácticos |
 | `assets/nachito.jpeg` | Mascota Nachito |
+| `assets/neurona-decide.mp4` | Video del Módulo 3 (neurona que decide: del piso a la probabilidad) |
 | `tools/build.py` | Regenera `NeuroLin.html` desde `index.html` (`python tools/build.py`) |
 
 ## Uso
