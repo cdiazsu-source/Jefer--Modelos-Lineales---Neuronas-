@@ -14,6 +14,15 @@ Proyecto de **Jeferson Beltran**, estudiante de Economía · Modelos Lineales (2
 
 Incluye ficha de teoría con fórmulas, tutorial guiado, desafío y cuestionario.
 
+## Contenido del repositorio
+| Archivo | Descripción |
+|---|---|
+| `index.html` | Código fuente del simulador (se usa con servidor local o GitHub Pages) |
+| `NeuroLin.html` | Versión descargable en un solo archivo (Nachito embebido); solo necesita internet para Plotly y KaTeX |
+| `NeuroLin_Fundamentos_Teoricos_y_Practicos.docx` | Documento de fundamentos teóricos y prácticos |
+| `assets/nachito.jpeg` | Mascota Nachito |
+| `tools/build.py` | Regenera `NeuroLin.html` desde `index.html` (`python tools/build.py`) |
+
 ## Uso
 Es un sitio estático (HTML + JavaScript, sin compilación). Requiere internet para cargar Plotly y KaTeX desde CDN.
 
